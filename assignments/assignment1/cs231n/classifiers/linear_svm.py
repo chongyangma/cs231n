@@ -34,13 +34,17 @@ def svm_loss_naive(W, X, y, reg):
       margin = scores[j] - correct_class_score + 1 # note delta = 1
       if margin > 0:
         loss += margin
+        dW[:, j] += X[i]
+        dW[:, y[i]] -= X[i]
 
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
   loss /= num_train
+  dW /= num_train
 
   # Add regularization to the loss.
   loss += 0.5 * reg * np.sum(W * W)
+  dW += reg * W
 
   #############################################################################
   # TODO:                                                                     #
@@ -63,30 +67,33 @@ def svm_loss_vectorized(W, X, y, reg):
   """
   loss = 0.0
   dW = np.zeros(W.shape) # initialize the gradient as zero
+  num_classes = W.shape[1]
+  num_train = X.shape[0]
 
-  #############################################################################
-  # TODO:                                                                     #
-  # Implement a vectorized version of the structured SVM loss, storing the    #
-  # result in loss.                                                           #
-  #############################################################################
-  pass
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
+  scores = X.dot(W)
+  correct_scores = scores[range(num_train), y]
+  margin = (scores.T - correct_scores.T).T + 1
+  margin = margin.clip(min = 0)
+  margin[range(num_train), y] = 0
 
+  # a binary indicator of whether a margin is positive
+  activation = (margin > 0).astype(int)
 
-  #############################################################################
-  # TODO:                                                                     #
-  # Implement a vectorized version of the gradient for the structured SVM     #
-  # loss, storing the result in dW.                                           #
-  #                                                                           #
-  # Hint: Instead of computing the gradient from scratch, it may be easier    #
-  # to reuse some of the intermediate values that you used to compute the     #
-  # loss.                                                                     #
-  #############################################################################
-  pass
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
+  # sum over all positive activations. the activation of y[i] on X[i] is the
+  # negative of the sum
+  sum_activation = np.sum(activation, axis = 1)
+  activation[range(num_train), y] = -sum_activation
+
+  # it can be proven that dW is simply a dot product
+  dW = X.T.dot(activation)
+  # and the loss is simply the margin
+  loss = np.sum(margin)
+  # Right now the loss is a sum over all training examples, but we want it
+  # to be an average instead so we divide by num_train.
+  loss /= num_train
+  dW /= num_train
+  # Add regularization to the loss and grad.
+  loss += 0.5 * reg * np.sum(W * W)
+  dW += reg * W
 
   return loss, dW
