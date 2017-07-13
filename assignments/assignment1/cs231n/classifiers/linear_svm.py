@@ -1,5 +1,6 @@
 import numpy as np
 from random import shuffle
+from past.builtins import xrange
 
 def svm_loss_naive(W, X, y, reg):
   """
@@ -43,7 +44,7 @@ def svm_loss_naive(W, X, y, reg):
   dW /= num_train
 
   # Add regularization to the loss.
-  loss += 0.5 * reg * np.sum(W * W)
+  loss += reg * np.sum(W * W)
   dW += reg * W
 
   #############################################################################
@@ -54,7 +55,7 @@ def svm_loss_naive(W, X, y, reg):
   # loss is being computed. As a result you may need to modify some of the    #
   # code above to compute the gradient.                                       #
   #############################################################################
-
+  # Done as above
 
   return loss, dW
 
@@ -67,6 +68,12 @@ def svm_loss_vectorized(W, X, y, reg):
   """
   loss = 0.0
   dW = np.zeros(W.shape) # initialize the gradient as zero
+
+  #############################################################################
+  # TODO:                                                                     #
+  # Implement a vectorized version of the structured SVM loss, storing the    #
+  # result in loss.                                                           #
+  #############################################################################
   num_classes = W.shape[1]
   num_train = X.shape[0]
 
@@ -95,5 +102,23 @@ def svm_loss_vectorized(W, X, y, reg):
   # Add regularization to the loss and grad.
   loss += 0.5 * reg * np.sum(W * W)
   dW += reg * W
+  #############################################################################
+  #                             END OF YOUR CODE                              #
+  #############################################################################
+
+
+  #############################################################################
+  # TODO:                                                                     #
+  # Implement a vectorized version of the gradient for the structured SVM     #
+  # loss, storing the result in dW.                                           #
+  #                                                                           #
+  # Hint: Instead of computing the gradient from scratch, it may be easier    #
+  # to reuse some of the intermediate values that you used to compute the     #
+  # loss.                                                                     #
+  #############################################################################
+  # Done as above
+  #############################################################################
+  #                             END OF YOUR CODE                              #
+  #############################################################################
 
   return loss, dW

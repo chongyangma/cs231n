@@ -1,6 +1,10 @@
+from __future__ import print_function
+
 import numpy as np
 from cs231n.classifiers.linear_svm import *
 from cs231n.classifiers.softmax import *
+from past.builtins import xrange
+
 
 class LinearClassifier(object):
 
@@ -71,7 +75,7 @@ class LinearClassifier(object):
       #########################################################################
 
       if verbose and it % 100 == 0:
-        print 'iteration %d / %d: loss %f' % (it, num_iters, loss)
+        print('iteration %d / %d: loss %f' % (it, num_iters, loss))
 
     return loss_history
 
@@ -81,14 +85,15 @@ class LinearClassifier(object):
     data points.
 
     Inputs:
-    - X: D x N array of training data. Each column is a D-dimensional point.
+    - X: A numpy array of shape (N, D) containing training data; there are N
+      training samples each of dimension D.
 
     Returns:
     - y_pred: Predicted labels for the data in X. y_pred is a 1-dimensional
       array of length N, and each element is an integer giving the predicted
       class.
     """
-    y_pred = np.zeros(X.shape[1])
+    y_pred = np.zeros(X.shape[0])
     ###########################################################################
     # TODO:                                                                   #
     # Implement this method. Store the predicted labels in y_pred.            #
