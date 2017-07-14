@@ -1,6 +1,8 @@
+from __future__ import print_function
+
 import numpy as np
 import matplotlib.pyplot as plt
-
+from past.builtins import xrange
 
 class TwoLayerNet(object):
   """
@@ -90,14 +92,13 @@ class TwoLayerNet(object):
     # TODO: Finish the forward pass, and compute the loss. This should include  #
     # both the data loss and L2 regularization for W1 and W2. Store the result  #
     # in the variable loss, which should be a scalar. Use the Softmax           #
-    # classifier loss. So that your results match ours, multiply the            #
-    # regularization loss by 0.5                                                #
+    # classifier loss.                                                          #
     #############################################################################
     scores -= np.max(scores)
     p = np.exp(scores) / np.sum(np.exp(scores), axis = 1)[:, np.newaxis]
     loss = -np.sum(np.log(p[range(N), y]))
     loss /= N
-    loss += 0.5 * reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+    loss += reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -130,7 +131,7 @@ class TwoLayerNet(object):
 
   def train(self, X, y, X_val, y_val,
             learning_rate=1e-3, learning_rate_decay=0.95,
-            reg=1e-5, num_iters=100,
+            reg=5e-6, num_iters=100,
             batch_size=200, verbose=False):
     """
     Train this neural network using stochastic gradient descent.
@@ -189,7 +190,7 @@ class TwoLayerNet(object):
       #########################################################################
 
       if verbose and it % 100 == 0:
-        print 'iteration %d / %d: loss %f' % (it, num_iters, loss)
+        print('iteration %d / %d: loss %f' % (it, num_iters, loss))
 
       # Every epoch, check train and val accuracy and decay learning rate.
       if it % iterations_per_epoch == 0:
