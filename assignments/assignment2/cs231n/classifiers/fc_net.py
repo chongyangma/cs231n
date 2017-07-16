@@ -265,7 +265,7 @@ class FullyConnectedNet(object):
                 current_input, affine_bn_relu_cache[i] = affine_bn_relu_forward(current_input, self.params[keyW], self.params[keyb], self.params[key_gamma], self.params[key_beta], self.bn_params[i-1])
 
             if self.use_dropout:
-                current_input, dropout_cache[i] = dropout_forward(current_input,self.dropout_param)
+                current_input, dropout_cache[i] = dropout_forward(current_input, self.dropout_param)
 
         # Last affine layer:
         keyW = 'W' + str(self.num_layers)
