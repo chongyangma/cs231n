@@ -223,7 +223,7 @@ class CaptioningRNN(object):
         captions[:, 0] = self._start
         curr_word = np.ones((N, 1), dtype=np.int32) * self._start
 
-        for t in range(max_length):
+        for t in range(max_length - 1):
             word_embed, _ = word_embedding_forward(curr_word, W_embed)
             if self.cell_type == 'lstm':
                 h, c, _ = lstm_step_forward(np.squeeze(word_embed), prev_h, prev_c, Wx, Wh, b)
@@ -231,8 +231,8 @@ class CaptioningRNN(object):
                 h, _ = rnn_step_forward(np.squeeze(word_embed), prev_h, Wx, Wh, b)
             scores, _ = temporal_affine_forward(h[:, np.newaxis, :], W_vocab, b_vocab)
             idx_best = np.squeeze(np.argmax(scores, axis=2))
-            captions[:, t] = idx_best
-            curr_word = captions[:, t]
+            captions[:, t+1] = idx_best
+            curr_word = captions[:, t+1]
             prev_h = h
             if self.cell_type == 'lstm':
                 prev_c = c
