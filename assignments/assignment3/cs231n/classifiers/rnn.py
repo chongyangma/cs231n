@@ -145,9 +145,9 @@ class CaptioningRNN(object):
         else:
             out_hidden, cache_hidden = rnn_forward(out_word_vector, out_proj, Wx, Wh, b)
 
-            out_temporal_affine, cache_temporal_affine = temporal_affine_forward(out_hidden, W_vocab, b_vocab)
-            loss, dscores = temporal_softmax_loss(out_temporal_affine, captions_out, mask)
-            dh, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dscores, cache_temporal_affine)
+        out_temporal_affine, cache_temporal_affine = temporal_affine_forward(out_hidden, W_vocab, b_vocab)
+        loss, dscores = temporal_softmax_loss(out_temporal_affine, captions_out, mask)
+        dh, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dscores, cache_temporal_affine)
 
         if self.cell_type == 'lstm':
             dx, dh0, grads['Wx'], grads['Wh'], grads['b'] = lstm_backward(dh, cache_hidden)
