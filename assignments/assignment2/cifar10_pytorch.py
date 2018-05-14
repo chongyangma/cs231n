@@ -14,6 +14,22 @@ import numpy as np
 
 import timeit
 import os
+import argparse
+
+parser = argparse.ArgumentParser(description='CIFAR-10 Image Classification')
+parser.add_argument('--epochs', type=int, default=5, metavar='N',
+                    help='number of epochs to train')
+parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+                    help='batch size')
+parser.add_argument('--log-interval', type=int, default=100, metavar='N',
+                    help='how many batches to wait before logging training status')
+parser.add_argument('--learning-rate', type=float, default=0.0001,
+                    help='learning rate')
+parser.add_argument('--model_factory', type=str, default='resnet-18',
+                    help="specifies which model to use")
+parser.add_argument('--optim-method', type=str, default='adam',
+                    help="optimization method")
+args = parser.parse_args()
 
 class ChunkSampler(sampler.Sampler):
     """Samples elements sequentially from some offset.
@@ -36,17 +52,16 @@ NUM_VAL = 1000
 
 cifar10_train = dset.CIFAR10('./cs231n/datasets', train=True, download=True,
                            transform=T.ToTensor())
-loader_train = DataLoader(cifar10_train, batch_size=64, sampler=ChunkSampler(NUM_TRAIN, 0))
+loader_train = DataLoader(cifar10_train, batch_size=args.batch_size, sampler=ChunkSampler(NUM_TRAIN, 0))
 
 cifar10_val = dset.CIFAR10('./cs231n/datasets', train=True, download=True,
                            transform=T.ToTensor())
-loader_val = DataLoader(cifar10_val, batch_size=64, sampler=ChunkSampler(NUM_VAL, NUM_TRAIN))
+loader_val = DataLoader(cifar10_val, batch_size=args.batch_size, sampler=ChunkSampler(NUM_VAL, NUM_TRAIN))
 
 cifar10_test = dset.CIFAR10('./cs231n/datasets', train=False, download=True,
                           transform=T.ToTensor())
-loader_test = DataLoader(cifar10_test, batch_size=64)
+loader_test = DataLoader(cifar10_test, batch_size=args.batch_size)
 
-print_every = 100
 gpu_dtype = torch.cuda.FloatTensor
 
 def train(model, loss_fn, optimizer, num_epochs = 1):
@@ -60,7 +75,7 @@ def train(model, loss_fn, optimizer, num_epochs = 1):
             scores = model(x_var)
 
             loss = loss_fn(scores, y_var)
-            if (t + 1) % print_every == 0:
+            if (t + 1) % args.log_interval == 0:
                 print('t = %d, loss = %.6f' % (t + 1, loss.item()))
 
             optimizer.zero_grad()
@@ -172,22 +187,30 @@ class ResNet(nn.Module):
         out = self.linear(out)
         return out
 
-model = ResNet(Bottleneck, [3, 4, 23, 3]) # ResNet101
-if torch.cuda.is_available():
-    model.cuda()
-
-checkpoint_path = 'resnet_model.pth'
-
-loss_fn = nn.CrossEntropyLoss().type(gpu_dtype)
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
 if __name__ == '__main__':
+    if args.model_factory == 'resnet-18':
+        model = ResNet(BasicBlock, [2, 2, 2, 2]) # ResNet-18
+        checkpoint_path = 'resnet18_model.pth'
+    else:
+        model = ResNet(Bottleneck, [3, 4, 23, 3]) # ResNet101
+        checkpoint_path = 'resnet101_model.pth'
+
+    if torch.cuda.is_available():
+        model.cuda()
+
+    loss_fn = nn.CrossEntropyLoss().type(gpu_dtype)
+    if args.optim_method == 'adam':
+        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    else:
+        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4)
+
     if os.path.exists(checkpoint_path):
         print('Loading checkpoint from path %s' % checkpoint_path)
         model.load_state_dict(torch.load(checkpoint_path))
         check_accuracy(model, loader_val)
 
-    train(model, loss_fn, optimizer, num_epochs=5)
+    train(model, loss_fn, optimizer, num_epochs=args.epochs)
     check_accuracy(model, loader_val)
     torch.save(model.state_dict(), checkpoint_path)
 
