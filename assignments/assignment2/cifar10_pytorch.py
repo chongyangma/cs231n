@@ -62,15 +62,18 @@ cifar10_test = dset.CIFAR10('./cs231n/datasets', train=False, download=True,
                           transform=T.ToTensor())
 loader_test = DataLoader(cifar10_test, batch_size=args.batch_size)
 
-gpu_dtype = torch.cuda.FloatTensor
+if torch.cuda.is_available():
+    dtype = torch.cuda.FloatTensor
+else:
+    dtype = torch.FloatTensor
 
 def train(model, loss_fn, optimizer, num_epochs = 1):
     for epoch in range(num_epochs):
         print('Starting epoch %d / %d' % (epoch + 1, num_epochs))
         model.train()
         for t, (x, y) in enumerate(loader_train):
-            x_var = Variable(x.type(gpu_dtype))
-            y_var = Variable(y.type(gpu_dtype).long())
+            x_var = Variable(x.type(dtype))
+            y_var = Variable(y.type(dtype).long())
 
             scores = model(x_var)
 
@@ -91,7 +94,7 @@ def check_accuracy(model, loader):
     num_samples = 0
     model.eval() # Put the model in test mode (the opposite of model.train(), essentially)
     for x, y in loader:
-        x_var = Variable(x.type(gpu_dtype), requires_grad=False)
+        x_var = Variable(x.type(dtype), requires_grad=False)
 
         scores = model(x_var)
         _, preds = scores.data.cpu().max(1)
@@ -192,14 +195,16 @@ if __name__ == '__main__':
     if args.model_factory == 'resnet-18':
         model = ResNet(BasicBlock, [2, 2, 2, 2]) # ResNet-18
         checkpoint_path = 'resnet18_model.pth'
-    else:
-        model = ResNet(Bottleneck, [3, 4, 23, 3]) # ResNet101
+    elif args.model_factory == 'resnet-101':
+        model = ResNet(Bottleneck, [3, 4, 23, 3]) # ResNet-101
         checkpoint_path = 'resnet101_model.pth'
+    else:
+        raise ValueError('Not a known model.')
 
     if torch.cuda.is_available():
         model.cuda()
 
-    loss_fn = nn.CrossEntropyLoss().type(gpu_dtype)
+    loss_fn = nn.CrossEntropyLoss().type(dtype)
     if args.optim_method == 'adam':
         optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     else:
