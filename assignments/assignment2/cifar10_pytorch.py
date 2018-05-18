@@ -50,17 +50,25 @@ class ChunkSampler(sampler.Sampler):
 NUM_TRAIN = 49000
 NUM_VAL = 1000
 
-cifar10_train = dset.CIFAR10('./cs231n/datasets', train=True, download=True,
-                           transform=T.ToTensor())
-loader_train = DataLoader(cifar10_train, batch_size=args.batch_size, sampler=ChunkSampler(NUM_TRAIN, 0))
+data_folder = './cs231n/datasets'
 
-cifar10_val = dset.CIFAR10('./cs231n/datasets', train=True, download=True,
-                           transform=T.ToTensor())
-loader_val = DataLoader(cifar10_val, batch_size=args.batch_size, sampler=ChunkSampler(NUM_VAL, NUM_TRAIN))
+transform_train = T.Compose([
+    T.RandomCrop(32, padding=4),
+    T.RandomHorizontalFlip(),
+    T.ToTensor(),
+    T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+])
 
-cifar10_test = dset.CIFAR10('./cs231n/datasets', train=False, download=True,
-                          transform=T.ToTensor())
-loader_test = DataLoader(cifar10_test, batch_size=args.batch_size)
+transform_test = T.Compose([
+    T.ToTensor(),
+    T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+])
+
+train_set = dset.CIFAR10(data_folder, train=True, download=True, transform=transform_train)
+loader_train = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=2)
+
+test_set = dset.CIFAR10(data_folder, train=False, download=True, transform=transform_test)
+loader_test = DataLoader(test_set, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
 if torch.cuda.is_available():
     dtype = torch.cuda.FloatTensor
@@ -79,7 +87,10 @@ def train(model, loss_fn, optimizer, num_epochs = 1):
 
             loss = loss_fn(scores, y_var)
             if (t + 1) % args.log_interval == 0:
-                print('t = %d, loss = %.6f' % (t + 1, loss.item()))
+                if torch.cuda.is_available():
+                    print('t = %d, loss = %.6f' % (t + 1, loss.item()))
+                else:
+                    print('t = %d, loss = %.6f' % (t + 1, loss))
 
             optimizer.zero_grad()
             loss.backward()
@@ -213,10 +224,10 @@ if __name__ == '__main__':
     if os.path.exists(checkpoint_path):
         print('Loading checkpoint from path %s' % checkpoint_path)
         model.load_state_dict(torch.load(checkpoint_path))
-        check_accuracy(model, loader_val)
+        check_accuracy(model, loader_test)
 
     train(model, loss_fn, optimizer, num_epochs=args.epochs)
-    check_accuracy(model, loader_val)
+    check_accuracy(model, loader_train)
     torch.save(model.state_dict(), checkpoint_path)
 
     best_model = model
