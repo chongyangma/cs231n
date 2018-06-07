@@ -16,6 +16,8 @@ import timeit
 import os
 import argparse
 
+from vgg import *
+
 parser = argparse.ArgumentParser(description='CIFAR-10 Image Classification')
 parser.add_argument('--epochs', type=int, default=5, metavar='N',
                     help='number of epochs to train')
@@ -46,9 +48,6 @@ class ChunkSampler(sampler.Sampler):
 
     def __len__(self):
         return self.num_samples
-
-NUM_TRAIN = 49000
-NUM_VAL = 1000
 
 data_folder = './cs231n/datasets'
 
@@ -209,6 +208,12 @@ if __name__ == '__main__':
     elif args.model_factory == 'resnet-101':
         model = ResNet(Bottleneck, [3, 4, 23, 3]) # ResNet-101
         checkpoint_path = 'resnet101_model.pth'
+    elif args.model_factory == 'vgg-16':
+        model = VGG('VGG16') # VGG-16
+        checkpoint_path = 'vgg16_model.pth'
+    elif args.model_factory == 'vgg-19':
+        model = VGG('VGG19') # VGG-19
+        checkpoint_path = 'vgg19_model.pth'
     else:
         raise ValueError('Not a known model.')
 
