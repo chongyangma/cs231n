@@ -28,7 +28,7 @@ parser.add_argument('--log-interval', type=int, default=100, metavar='N',
                     help='how many batches to wait before logging training status')
 parser.add_argument('--learning-rate', type=float, default=0.0001,
                     help='learning rate')
-parser.add_argument('--model_factory', type=str, default='resnet-18',
+parser.add_argument('--model_factory', type=str, default='base-model',
                     help="specifies which model to use")
 parser.add_argument('--optim-method', type=str, default='adam',
                     help="optimization method")
@@ -98,7 +98,7 @@ def train(model, loss_fn, optimizer, num_epochs = 1):
 
 def check_accuracy(model, loader):
     if loader.dataset.train:
-        print('Checking accuracy on validation set')
+        print('Checking accuracy on training set')
     else:
         print('Checking accuracy on test set')
     num_correct = 0
@@ -117,8 +117,48 @@ def check_accuracy(model, loader):
 torch.cuda.random.manual_seed(12345)
 
 
+class BaseModel(nn.Module):
+    def __init__(self):
+        super(BaseModel, self).__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+            nn.PReLU(),
+            nn.BatchNorm2d(32),
+            nn.Dropout(p=0.3),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.PReLU(),
+            nn.BatchNorm2d(64),
+            nn.Dropout(p=0.3),
+            nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1),
+            nn.PReLU(),
+            nn.BatchNorm2d(64),
+            nn.Dropout(p=0.3),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.PReLU(),
+            nn.BatchNorm2d(128),
+            nn.Dropout(p=0.3),
+            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+            nn.PReLU(),
+            nn.BatchNorm2d(256),
+            nn.Dropout(p=0.3),
+            nn.Conv2d(256, 512, kernel_size=3, stride=2, padding=1),
+            nn.PReLU(),
+            nn.BatchNorm2d(512),
+            nn.Dropout(p=0.2),
+            nn.Conv2d(512, 10, kernel_size=2, stride=1, padding=0)
+        )
+
+    def forward(self, x):
+        out = self.features(x)
+        out = out.view(out.size(0), -1)
+        return out
+
+
 if __name__ == '__main__':
-    if args.model_factory == 'resnet-18':
+    if args.model_factory == 'base-model':
+        model = BaseModel()
+        checkpoint_path = 'base_model.pth'
+    elif args.model_factory == 'resnet-18':
         model = ResNet(BasicBlock, [2, 2, 2, 2]) # ResNet-18
         checkpoint_path = 'resnet18_model.pth'
     elif args.model_factory == 'resnet-101':
