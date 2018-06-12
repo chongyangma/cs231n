@@ -28,8 +28,16 @@ Q3: [Dropout](assignments/assignment2/Dropout.ipynb)
 
 Q4: [Convolutional Networks](assignments/assignment2/ConvolutionalNetworks.ipynb)
 
-Q5: [PyTorch / TensorFlow on CIFAR-10](assignments/assignment2/TensorFlow.ipynb) ([Tweaked model](assignments/assignment2/TensorFlow_my_model.ipynb))
+Q5: [PyTorch](assignments/assignment2/PyTorch.ipynb) / [TensorFlow](assignments/assignment2/TensorFlow.ipynb) on CIFAR-10 ([Tweaked TF model](assignments/assignment2/TensorFlow_my_model.ipynb))
 - Training / validation / test accuracy on CIFAR-10: 0.928 / 0.801 / 0.822
+
+| Model       | Training Accuracy | Test Accuracy |
+| ----------- |:-----------------:| :------------:|
+| Base network | 92.86 | 88.90 |
+| VGG-16  | 99.98  | 93.16 |
+| VGG-19  | 99.98  | 93.24 |
+| ResNet-18  | 99.99  | 93.73 |
+| ResNet-101  | 99.99 | 93.76 |
 
 ## Assignment #3: Image Captioning with Vanilla RNNs, Image Captioning with LSTMs, Network Visualization, Style Transfer, Generative Adversarial Networks
 Q1: [Image Captioning with Vanilla RNNs](assignments/assignment3/RNN_Captioning.ipynb)
