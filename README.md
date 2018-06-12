@@ -29,7 +29,8 @@ Q3: [Dropout](assignments/assignment2/Dropout.ipynb)
 Q4: [Convolutional Networks](assignments/assignment2/ConvolutionalNetworks.ipynb)
 
 Q5: [PyTorch](assignments/assignment2/PyTorch.ipynb) / [TensorFlow](assignments/assignment2/TensorFlow.ipynb) on CIFAR-10 ([Tweaked TF model](assignments/assignment2/TensorFlow_my_model.ipynb))
-- Training / validation / test accuracy on CIFAR-10: 0.928 / 0.801 / 0.822
+- Training / validation / test accuracy of TF implementation on CIFAR-10: 0.928 / 0.801 / 0.822
+- PyTorch implementation:
 
 | Model       | Training Accuracy | Test Accuracy |
 | ----------- |:-----------------:| :------------:|
