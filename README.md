@@ -47,6 +47,6 @@ Q2: [Image Captioning with LSTMs](assignments/assignment3/LSTM_Captioning.ipynb)
 
 Q3: [Network Visualization: Saliency maps, Class Visualization, and Fooling Images](assignments/assignment3/NetworkVisualization-TensorFlow.ipynb)
 
-Q4: [Style Transfer](assignments/assignment3/StyleTransfer-TensorFlow.ipynb)
+Q4: Style Transfer ([TensorFlow](assignments/assignment3/StyleTransfer-TensorFlow.ipynb) / [PyTorch](assignments/assignment3/StyleTransfer-PyTorch.ipynb))
 
 Q5: [Generative Adversarial Networks](assignments/assignment3/GANs-TensorFlow.ipynb)
