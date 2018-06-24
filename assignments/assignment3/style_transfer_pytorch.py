@@ -1,42 +1,18 @@
-
-# coding: utf-8
-
-# # Style Transfer
-# In this notebook we will implement the style transfer technique from ["Image Style Transfer Using Convolutional Neural Networks" (Gatys et al., CVPR 2015)](http://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Gatys_Image_Style_Transfer_CVPR_2016_paper.pdf).
-#
-# The general idea is to take two images, and produce a new image that reflects the content of one but the artistic "style" of the other. We will do this by first formulating a loss function that matches the content and style of each respective image in the feature space of a deep network, and then performing gradient descent on the pixels of the image itself.
-#
-# The deep network we use as a feature extractor is [SqueezeNet](https://arxiv.org/abs/1602.07360), a small model that has been trained on ImageNet. You could use any network, but we chose SqueezeNet here for its small size and efficiency.
-#
-# Here's an example of the images you'll be able to produce by the end of this notebook:
-#
-# ![caption](example_styletransfer.png)
-#
-
-# ## Setup
-
-# In[1]:
-
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torchvision
 import torchvision.transforms as T
+from torchvision.utils import save_image
 import PIL
 
 import numpy as np
 
 from scipy.misc import imread
 from collections import namedtuple
-import matplotlib.pyplot as plt
 
 from cs231n.image_utils import SQUEEZENET_MEAN, SQUEEZENET_STD
-get_ipython().magic('matplotlib inline')
 
-
-# We provide you with some helper functions to deal with images, since for this part of the assignment we're dealing with real JPEGs, not CIFAR-10 data.
-
-# In[2]:
 
 def preprocess(img, size=512):
     transform = T.Compose([
@@ -54,7 +30,7 @@ def deprocess(img):
         T.Normalize(mean=[0, 0, 0], std=[1.0 / s for s in SQUEEZENET_STD.tolist()]),
         T.Normalize(mean=[-m for m in SQUEEZENET_MEAN.tolist()], std=[1, 1, 1]),
         T.Lambda(rescale),
-        T.ToPILImage(),
+        # T.ToPILImage(),
     ])
     return transform(img)
 
@@ -63,16 +39,11 @@ def rescale(x):
     x_rescaled = (x - low) / (high - low)
     return x_rescaled
 
-def rel_error(x,y):
-    return np.max(np.abs(x - y) / (np.maximum(1e-8, np.abs(x) + np.abs(y))))
-
 def features_from_img(imgpath, imgsize):
     img = preprocess(PIL.Image.open(imgpath), size=imgsize)
     img_var = Variable(img.type(dtype))
     return extract_features(img_var, cnn), img_var
 
-# Older versions of scipy.misc.imresize yield different results
-# from newer versions, so we check to make sure scipy is up to date.
 def check_scipy():
     import scipy
     vnum = int(scipy.__version__.split('.')[1])
@@ -80,21 +51,8 @@ def check_scipy():
 
 check_scipy()
 
-answers = np.load('style-transfer-checks.npz')
+dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
-
-# As in the last assignment, we need to set the dtype to select either the CPU or the GPU
-
-# In[3]:
-
-dtype = torch.FloatTensor
-# Uncomment out the following line if you're on a machine with a GPU set up for PyTorch!
-# dtype = torch.cuda.FloatTensor
-
-
-# In[4]:
-
-# Load the pre-trained SqueezeNet model.
 cnn = torchvision.models.squeezenet1_1(pretrained=True).features
 cnn.type(dtype)
 
@@ -103,8 +61,6 @@ cnn.type(dtype)
 for param in cnn.parameters():
     param.requires_grad = False
 
-# We provide this helper code which takes an image, a model (cnn), and returns a list of
-# feature maps, one per layer.
 def extract_features(x, cnn):
     """
     Use the CNN to extract features from the input image x.
@@ -141,9 +97,6 @@ def extract_features(x, cnn):
 # Then the content loss is given by:
 #
 # $L_c = w_c \times \sum_{i,j} (F_{ij}^{\ell} - P_{ij}^{\ell})^2$
-
-# In[5]:
-
 def content_loss(content_weight, content_current, content_original):
     """
     Compute the content loss for style transfer.
@@ -159,28 +112,6 @@ def content_loss(content_weight, content_current, content_original):
     """
     content_loss = content_weight * torch.sum((torch.pow(content_current - content_original, 2)))
     return content_loss
-
-
-# Test your content loss. You should see errors less than 0.001.
-
-# In[6]:
-
-def content_loss_test(correct):
-    content_image = 'styles/tubingen.jpg'
-    image_size =  192
-    content_layer = 3
-    content_weight = 6e-2
-
-    c_feats, content_img_var = features_from_img(content_image, image_size)
-
-    bad_img = Variable(torch.zeros(*content_img_var.data.size()))
-    feats = extract_features(bad_img, cnn)
-
-    student_output = content_loss(content_weight, c_feats[content_layer], feats[content_layer]).data.numpy()
-    error = rel_error(correct, student_output)
-    print('Maximum error is {:.3f}'.format(error))
-
-content_loss_test(answers['cl_out'])
 
 
 # ## Style loss
@@ -199,11 +130,6 @@ content_loss_test(answers['cl_out'])
 # In practice we usually compute the style loss at a set of layers $\mathcal{L}$ rather than just a single layer $\ell$; then the total style loss is the sum of style losses at each layer:
 #
 # $$L_s = \sum_{\ell \in \mathcal{L}} L_s^\ell$$
-#
-# Begin by implementing the Gram matrix computation below:
-
-# In[7]:
-
 def gram_matrix(features, normalize=True):
     """
     Compute the Gram matrix from features.
@@ -227,25 +153,6 @@ def gram_matrix(features, normalize=True):
     else:
         return gram
 
-
-# Test your Gram matrix code. You should see errors less than 0.001.
-
-# In[8]:
-
-def gram_matrix_test(correct):
-    style_image = 'styles/starry_night.jpg'
-    style_size = 192
-    feats, _ = features_from_img(style_image, style_size)
-    student_output = gram_matrix(feats[5].clone()).data.numpy()
-    error = rel_error(correct, student_output)
-    print('Maximum error is {:.3f}'.format(error))
-
-gram_matrix_test(answers['gm_out'])
-
-
-# Next, implement the style loss:
-
-# In[9]:
 
 # Now put it together in the style_loss function...
 def style_loss(feats, style_layers, style_targets, style_weights):
@@ -275,43 +182,12 @@ def style_loss(feats, style_layers, style_targets, style_weights):
     return style_loss
 
 
-# Test your style loss implementation. The error should be less than 0.001.
-
-# In[10]:
-
-def style_loss_test(correct):
-    content_image = 'styles/tubingen.jpg'
-    style_image = 'styles/starry_night.jpg'
-    image_size =  192
-    style_size = 192
-    style_layers = [1, 4, 6, 7]
-    style_weights = [300000, 1000, 15, 3]
-
-    c_feats, _ = features_from_img(content_image, image_size)
-    feats, _ = features_from_img(style_image, style_size)
-    style_targets = []
-    for idx in style_layers:
-        style_targets.append(gram_matrix(feats[idx].clone()))
-
-    student_output = style_loss(c_feats, style_layers, style_targets, style_weights).data.numpy()
-    error = rel_error(correct, student_output)
-    print('Error is {:.3f}'.format(error))
-
-
-style_loss_test(answers['sl_out'])
-
-
 # ## Total-variation regularization
 # It turns out that it's helpful to also encourage smoothness in the image. We can do this by adding another term to our loss that penalizes wiggles or "total variation" in the pixel values.
 #
 # You can compute the "total variation" as the sum of the squares of differences in the pixel values for all pairs of pixels that are next to each other (horizontally or vertically). Here we sum the total-variation regualarization for each of the 3 input channels (RGB), and weight the total summed loss by the total variation weight, $w_t$:
 #
 # $L_{tv} = w_t \times \sum_{c=1}^3\sum_{i=1}^{H-1} \sum_{j=1}^{W-1} \left( (x_{i,j+1, c} - x_{i,j,c})^2 + (x_{i+1, j,c} - x_{i,j,c})^2  \right)$
-#
-# In the next cell, fill in the definition for the TV loss term. To receive full credit, your implementation should not have any loops.
-
-# In[11]:
-
 def tv_loss(img, tv_weight):
     """
     Compute total variation loss.
@@ -331,31 +207,8 @@ def tv_loss(img, tv_weight):
     return loss
 
 
-# Test your TV loss implementation. Error should be less  than 0.001.
-
-# In[12]:
-
-def tv_loss_test(correct):
-    content_image = 'styles/tubingen.jpg'
-    image_size =  192
-    tv_weight = 2e-2
-
-    content_img = preprocess(PIL.Image.open(content_image), size=image_size)
-    content_img_var = Variable(content_img.type(dtype))
-
-    student_output = tv_loss(content_img_var, tv_weight).data.numpy()
-    error = rel_error(correct, student_output)
-    print('Error is {:.3f}'.format(error))
-
-tv_loss_test(answers['tv_out'])
-
-
-# Now we're ready to string it all together (you shouldn't have to modify this function):
-
-# In[13]:
-
 def style_transfer(content_image, style_image, image_size, style_size, content_layer, content_weight,
-                   style_layers, style_weights, tv_weight, init_random = False):
+                   style_layers, style_weights, tv_weight, iter_num=300, init_random = False):
     """
     Run style transfer!
 
@@ -404,17 +257,7 @@ def style_transfer(content_image, style_image, image_size, style_size, content_l
     # in the img_var Torch variable, whose requires_grad flag is set to True
     optimizer = torch.optim.Adam([img_var], lr=initial_lr)
 
-    f, axarr = plt.subplots(1,2)
-    axarr[0].axis('off')
-    axarr[1].axis('off')
-    axarr[0].set_title('Content Source Img.')
-    axarr[1].set_title('Style Source Img.')
-    axarr[0].imshow(deprocess(content_img.cpu()))
-    axarr[1].imshow(deprocess(style_img.cpu()))
-    plt.show()
-    plt.figure()
-
-    for t in range(300):
+    for t in range(iter_num):
         if t < 190:
             img.clamp_(-1.5, 1.5)
         optimizer.zero_grad()
@@ -434,36 +277,11 @@ def style_transfer(content_image, style_image, image_size, style_size, content_l
             optimizer = torch.optim.Adam([img_var], lr=decayed_lr)
         optimizer.step()
 
-        if t % 100 == 0:
-            print('Iteration {}'.format(t))
-            plt.axis('off')
-            plt.imshow(deprocess(img.cpu()))
-            plt.show()
-    print('Iteration {}'.format(t))
-    plt.axis('off')
-    plt.imshow(deprocess(img.cpu()))
-    plt.show()
+        if t % 100 == 0 or t == iter_num - 1:
+            print('Iteration {}: {}'.format(t, loss.item()))
+    save_image(deprocess(img), 'output.png')
 
 
-# ## Generate some pretty pictures!
-#
-# Try out `style_transfer` on the three different parameter sets below. Make sure to run all three cells. Feel free to add your own, but make sure to include the results of style transfer on the third parameter set (starry night) in your submitted notebook.
-#
-# * The `content_image` is the filename of content image.
-# * The `style_image` is the filename of style image.
-# * The `image_size` is the size of smallest image dimension of the content image (used for content loss and generated image).
-# * The `style_size` is the size of smallest style image dimension.
-# * The `content_layer` specifies which layer to use for content loss.
-# * The `content_weight` gives weighting on content loss in the overall loss function. Increasing the value of this parameter will make the final image look more realistic (closer to the original content).
-# * `style_layers` specifies a list of which layers to use for style loss.
-# * `style_weights` specifies a list of weights to use for each layer in style_layers (each of which will contribute a term to the overall style loss). We generally use higher weights for the earlier style layers because they describe more local/smaller scale features, which are more important to texture than features over larger receptive fields. In general, increasing these weights will make the resulting image look less like the original content and more distorted towards the appearance of the style image.
-# * `tv_weight` specifies the weighting of total variation regularization in the overall loss function. Increasing this value makes the resulting image look smoother and less jagged, at the cost of lower fidelity to style and content.
-#
-# Below the next three cells of code (in which you shouldn't change the hyperparameters), feel free to copy and paste the parameters to play around them and see how the resulting image changes.
-
-# In[14]:
-
-# Composition VII + Tubingen
 params1 = {
     'content_image' : 'styles/tubingen.jpg',
     'style_image' : 'styles/composition_vii.jpg',
@@ -477,69 +295,3 @@ params1 = {
 }
 
 style_transfer(**params1)
-
-
-# In[15]:
-
-# Scream + Tubingen
-params2 = {
-    'content_image':'styles/tubingen.jpg',
-    'style_image':'styles/the_scream.jpg',
-    'image_size':192,
-    'style_size':224,
-    'content_layer':3,
-    'content_weight':3e-2,
-    'style_layers':[1, 4, 6, 7],
-    'style_weights':[200000, 800, 12, 1],
-    'tv_weight':2e-2
-}
-
-style_transfer(**params2)
-
-
-# In[16]:
-
-# Starry Night + Tubingen
-params3 = {
-    'content_image' : 'styles/tubingen.jpg',
-    'style_image' : 'styles/starry_night.jpg',
-    'image_size' : 192,
-    'style_size' : 192,
-    'content_layer' : 3,
-    'content_weight' : 6e-2,
-    'style_layers' : [1, 4, 6, 7],
-    'style_weights' : [300000, 1000, 15, 3],
-    'tv_weight' : 2e-2
-}
-
-style_transfer(**params3)
-
-
-# ## Feature Inversion
-#
-# The code you've written can do another cool thing. In an attempt to understand the types of features that convolutional networks learn to recognize, a recent paper [1] attempts to reconstruct an image from its feature representation. We can easily implement this idea using image gradients from the pretrained network, which is exactly what we did above (but with two different feature representations).
-#
-# Now, if you set the style weights to all be 0 and initialize the starting image to random noise instead of the content source image, you'll reconstruct an image from the feature representation of the content source image. You're starting with total noise, but you should end up with something that looks quite a bit like your original image.
-#
-# (Similarly, you could do "texture synthesis" from scratch if you set the content weight to 0 and initialize the starting image to random noise, but we won't ask you to do that here.)
-#
-# [1] Aravindh Mahendran, Andrea Vedaldi, "Understanding Deep Image Representations by Inverting them", CVPR 2015
-#
-
-# In[17]:
-
-# Feature Inversion -- Starry Night + Tubingen
-params_inv = {
-    'content_image' : 'styles/tubingen.jpg',
-    'style_image' : 'styles/starry_night.jpg',
-    'image_size' : 192,
-    'style_size' : 192,
-    'content_layer' : 3,
-    'content_weight' : 6e-2,
-    'style_layers' : [1, 4, 6, 7],
-    'style_weights' : [0, 0, 0, 0], # we discard any contributions from style to the loss
-    'tv_weight' : 2e-2,
-    'init_random': True # we want to initialize our image to be random
-}
-
-style_transfer(**params_inv)
