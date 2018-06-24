@@ -89,3 +89,6 @@ ENV/
 .ropeproject
 
 .DS_Store
+*.pth
+*.zip
+*.tar.gz
