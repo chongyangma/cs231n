@@ -1,3 +1,4 @@
+import argparse
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -44,12 +45,6 @@ def features_from_img(imgpath, imgsize):
     img_var = Variable(img.type(dtype))
     return extract_features(img_var, cnn), img_var
 
-def check_scipy():
-    import scipy
-    vnum = int(scipy.__version__.split('.')[1])
-    assert vnum >= 16, "You must install SciPy >= 0.16.0 to complete this notebook."
-
-check_scipy()
 
 dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
@@ -154,7 +149,6 @@ def gram_matrix(features, normalize=True):
         return gram
 
 
-# Now put it together in the style_loss function...
 def style_loss(feats, style_layers, style_targets, style_weights):
     """
     Computes the style loss at a set of layers.
@@ -208,7 +202,7 @@ def tv_loss(img, tv_weight):
 
 
 def style_transfer(content_image, style_image, image_size, style_size, content_layer, content_weight,
-                   style_layers, style_weights, tv_weight, iter_num=300, init_random = False):
+                   style_layers, style_weights, tv_weight, iter_num, init_random = False):
     """
     Run style transfer!
 
@@ -282,16 +276,31 @@ def style_transfer(content_image, style_image, image_size, style_size, content_l
     save_image(deprocess(img), 'output.png')
 
 
-params1 = {
-    'content_image' : 'styles/tubingen.jpg',
-    'style_image' : 'styles/composition_vii.jpg',
-    'image_size' : 192,
-    'style_size' : 512,
-    'content_layer' : 3,
-    'content_weight' : 5e-2,
-    'style_layers' : (1, 4, 6, 7),
-    'style_weights' : (20000, 500, 12, 1),
-    'tv_weight' : 5e-2
-}
+parser = argparse.ArgumentParser(description='Style Transfer')
+parser.add_argument('--iter_num', type=int, default=300, metavar='N',
+                    help='number of iterations to optimize')
+parser.add_argument('--content_image', type=str, default='styles/tubingen.jpg',
+                    help='Input path to content image')
+parser.add_argument('--style_image', type=str, default='styles/composition_vii.jpg',
+                    help='Input path to style image')
+parser.add_argument('--image_size', type=int, default=192, metavar='N',
+                    help='size of smallest image dimension (used for content loss and generated image)')
+parser.add_argument('--style_size', type=int, default=512, metavar='N',
+                    help='size of smallest style image dimension')
+parser.add_argument('--tv_weight', type=float, default='5e-2',
+                    help='weight of total variation regularization term')
+parser.add_argument('--init_random', action='store_true', default=False,
+                    help='initialize the starting image to uniform random noise')
 
-style_transfer(**params1)
+args = parser.parse_args()
+
+
+if __name__ == '__main__':
+    style_transfer(args.content_image, args.style_image,
+                   args.image_size, args.style_size,
+                   3, 5e-2,
+                   (1, 4, 6, 7), (20000, 500, 12, 1),
+                   args.tv_weight,
+                   args.iter_num,
+                   args.init_random
+                   )
