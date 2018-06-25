@@ -1,3 +1,4 @@
+from __future__ import print_function
 import argparse
 import torch
 import torch.nn as nn
@@ -6,7 +7,6 @@ import torchvision
 import torchvision.transforms as T
 from torchvision.utils import save_image
 import PIL
-
 import numpy as np
 
 from cs231n.image_utils import SQUEEZENET_MEAN, SQUEEZENET_STD
@@ -28,7 +28,6 @@ def deprocess(img):
         T.Normalize(mean=[0, 0, 0], std=[1.0 / s for s in SQUEEZENET_STD.tolist()]),
         T.Normalize(mean=[-m for m in SQUEEZENET_MEAN.tolist()], std=[1, 1, 1]),
         T.Lambda(rescale),
-        # T.ToPILImage(),
     ])
     return transform(img)
 
@@ -47,9 +46,6 @@ dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTens
 
 cnn = torchvision.models.squeezenet1_1(pretrained=True).features
 cnn.type(dtype)
-
-# We don't want to train the model any further, so we don't want PyTorch to waste computation
-# computing gradients on parameters we're never going to update.
 for param in cnn.parameters():
     param.requires_grad = False
 
@@ -77,18 +73,6 @@ def extract_features(x, cnn):
     return features
 
 
-# ## Computing Loss
-#
-# We're going to compute the three components of our loss function now. The loss function is a weighted sum of three terms: content loss + style loss + total variation loss. You'll fill in the functions that compute these weighted terms below.
-
-# ## Content loss
-# We can generate an image that reflects the content of one image and the style of another by incorporating both in our loss function. We want to penalize deviations from the content of the content image and deviations from the style of the style image. We can then use this hybrid loss function to perform gradient descent **not on the parameters** of the model, but instead **on the pixel values** of our original image.
-#
-# Let's first write the content loss function. Content loss measures how much the feature map of the generated image differs from the feature map of the source image. We only care about the content representation of one layer of the network (say, layer $\ell$), that has feature maps $A^\ell \in \mathbb{R}^{1 \times C_\ell \times H_\ell \times W_\ell}$. $C_\ell$ is the number of filters/channels in layer $\ell$, $H_\ell$ and $W_\ell$ are the height and width. We will work with reshaped versions of these feature maps that combine all spatial positions into one dimension. Let $F^\ell \in \mathbb{R}^{N_\ell \times M_\ell}$ be the feature map for the current image and $P^\ell \in \mathbb{R}^{N_\ell \times M_\ell}$ be the feature map for the content source image where $M_\ell=H_\ell\times W_\ell$ is the number of elements in each feature map. Each row of $F^\ell$ or $P^\ell$ represents the vectorized activations of a particular filter, convolved over all positions of the image. Finally, let $w_c$ be the weight of the content loss term in the loss function.
-#
-# Then the content loss is given by:
-#
-# $L_c = w_c \times \sum_{i,j} (F_{ij}^{\ell} - P_{ij}^{\ell})^2$
 def content_loss(content_weight, content_current, content_original):
     """
     Compute the content loss for style transfer.
@@ -106,22 +90,6 @@ def content_loss(content_weight, content_current, content_original):
     return content_loss
 
 
-# ## Style loss
-# Now we can tackle the style loss. For a given layer $\ell$, the style loss is defined as follows:
-#
-# First, compute the Gram matrix G which represents the correlations between the responses of each filter, where F is as above. The Gram matrix is an approximation to the covariance matrix -- we want the activation statistics of our generated image to match the activation statistics of our style image, and matching the (approximate) covariance is one way to do that. There are a variety of ways you could do this, but the Gram matrix is nice because it's easy to compute and in practice shows good results.
-#
-# Given a feature map $F^\ell$ of shape $(1, C_\ell, M_\ell)$, the Gram matrix has shape $(1, C_\ell, C_\ell)$ and its elements are given by:
-#
-# $$G_{ij}^\ell  = \sum_k F^{\ell}_{ik} F^{\ell}_{jk}$$
-#
-# Assuming $G^\ell$ is the Gram matrix from the feature map of the current image, $A^\ell$ is the Gram Matrix from the feature map of the source style image, and $w_\ell$ a scalar weight term, then the style loss for the layer $\ell$ is simply the weighted Euclidean distance between the two Gram matrices:
-#
-# $$L_s^\ell = w_\ell \sum_{i, j} \left(G^\ell_{ij} - A^\ell_{ij}\right)^2$$
-#
-# In practice we usually compute the style loss at a set of layers $\mathcal{L}$ rather than just a single layer $\ell$; then the total style loss is the sum of style losses at each layer:
-#
-# $$L_s = \sum_{\ell \in \mathcal{L}} L_s^\ell$$
 def gram_matrix(features, normalize=True):
     """
     Compute the Gram matrix from features.
@@ -164,8 +132,6 @@ def style_loss(feats, style_layers, style_targets, style_weights):
     Returns:
     - style_loss: A PyTorch Variable holding a scalar giving the style loss.
     """
-    # Hint: you can do this with one for loop over the style layers, and should
-    # not be very much code (~5 lines). You will need to use your gram_matrix function.
     style_loss = Variable(torch.FloatTensor([0]))
     for i in range(len(style_layers)):
         gram = gram_matrix(feats[style_layers[i]])
@@ -173,12 +139,6 @@ def style_loss(feats, style_layers, style_targets, style_weights):
     return style_loss
 
 
-# ## Total-variation regularization
-# It turns out that it's helpful to also encourage smoothness in the image. We can do this by adding another term to our loss that penalizes wiggles or "total variation" in the pixel values.
-#
-# You can compute the "total variation" as the sum of the squares of differences in the pixel values for all pairs of pixels that are next to each other (horizontally or vertically). Here we sum the total-variation regualarization for each of the 3 input channels (RGB), and weight the total summed loss by the total variation weight, $w_t$:
-#
-# $L_{tv} = w_t \times \sum_{c=1}^3\sum_{i=1}^{H-1} \sum_{j=1}^{W-1} \left( (x_{i,j+1, c} - x_{i,j,c})^2 + (x_{i+1, j,c} - x_{i,j,c})^2  \right)$
 def tv_loss(img, tv_weight):
     """
     Compute total variation loss.
@@ -191,7 +151,6 @@ def tv_loss(img, tv_weight):
     - loss: PyTorch Variable holding a scalar giving the total variation loss
       for img weighted by tv_weight.
     """
-    # Your implementation should be vectorized and not require any loops!
     w_variance = torch.sum(torch.pow(img[:,:,:,:-1] - img[:,:,:,1:], 2))
     h_variance = torch.sum(torch.pow(img[:,:,:-1,:] - img[:,:,1:,:], 2))
     loss = tv_weight * (h_variance + w_variance)
@@ -200,22 +159,6 @@ def tv_loss(img, tv_weight):
 
 def style_transfer(content_image, style_image, image_size, style_size, content_layer, content_weight,
                    style_layers, style_weights, tv_weight, iter_num, init_random = False):
-    """
-    Run style transfer!
-
-    Inputs:
-    - content_image: filename of content image
-    - style_image: filename of style image
-    - image_size: size of smallest image dimension (used for content loss and generated image)
-    - style_size: size of smallest style image dimension
-    - content_layer: layer to use for content loss
-    - content_weight: weighting on content loss
-    - style_layers: list of layers to use for style loss
-    - style_weights: list of weights to use for each layer in style_layers
-    - tv_weight: weight of total variation regularization term
-    - init_random: initialize the starting image to uniform random noise
-    """
-
     # Extract features for the content image
     content_img = preprocess(PIL.Image.open(content_image), size=image_size)
     content_img_var = Variable(content_img.type(dtype))
