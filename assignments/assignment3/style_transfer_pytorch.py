@@ -300,10 +300,12 @@ parser.add_argument('--style_weights', type=str, default='20000, 500, 12, 1',
 
 if __name__ == '__main__':
     args = parser.parse_args()
+
     style_layers_list = [int(item) for item in args.style_layers.split(',')]
     style_weights_list = [float(item) for item in args.style_weights.split(',')]
-    print(style_layers_list)
-    print(style_weights_list)
+    assert len(style_layers_list) == len(style_weights_list), \
+        "Numbers of layers and weights should match"
+
     style_transfer(args.content_image, args.style_image,
                    args.image_size, args.style_size,
                    args.content_layer, args.content_weight,
