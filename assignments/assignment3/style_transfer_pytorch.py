@@ -1,4 +1,3 @@
-from __future__ import print_function
 import argparse
 import torch
 import torch.nn as nn
@@ -132,7 +131,7 @@ def style_loss(feats, style_layers, style_targets, style_weights):
     Returns:
     - style_loss: A PyTorch Variable holding a scalar giving the style loss.
     """
-    style_loss = Variable(torch.FloatTensor([0]))
+    style_loss = 0
     for i in range(len(style_layers)):
         gram = gram_matrix(feats[style_layers[i]])
         style_loss += style_weights[i] * torch.sum(torch.pow(gram-style_targets[i], 2))
