@@ -9,9 +9,6 @@ import PIL
 
 import numpy as np
 
-from scipy.misc import imread
-from collections import namedtuple
-
 from cs231n.image_utils import SQUEEZENET_MEAN, SQUEEZENET_STD
 
 
@@ -291,15 +288,26 @@ parser.add_argument('--tv_weight', type=float, default='5e-2',
                     help='weight of total variation regularization term')
 parser.add_argument('--init_random', action='store_true', default=False,
                     help='initialize the starting image to uniform random noise')
-
-args = parser.parse_args()
+parser.add_argument('--content_layer', type=int, default=3,
+                    help='layer to use for content loss')
+parser.add_argument('--content_weight', type=float, default=5e-2,
+                    help='weighting on content loss')
+parser.add_argument('--style_layers', type=str, default='1, 4, 6, 7',
+                    help='list of layers to use for style loss')
+parser.add_argument('--style_weights', type=str, default='20000, 500, 12, 1',
+                    help='list of weights to use for each layer in style_layers')
 
 
 if __name__ == '__main__':
+    args = parser.parse_args()
+    style_layers_list = [int(item) for item in args.style_layers.split(',')]
+    style_weights_list = [float(item) for item in args.style_weights.split(',')]
+    print(style_layers_list)
+    print(style_weights_list)
     style_transfer(args.content_image, args.style_image,
                    args.image_size, args.style_size,
-                   3, 5e-2,
-                   (1, 4, 6, 7), (20000, 500, 12, 1),
+                   args.content_layer, args.content_weight,
+                   style_layers_list, style_weights_list,
                    args.tv_weight,
                    args.iter_num,
                    args.init_random
