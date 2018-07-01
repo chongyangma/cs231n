@@ -35,11 +35,6 @@ def rescale(x):
     x_rescaled = (x - low) / (high - low)
     return x_rescaled
 
-def features_from_img(imgpath, imgsize):
-    img = preprocess(PIL.Image.open(imgpath), size=imgsize)
-    img_var = Variable(img.type(dtype))
-    return extract_features(img_var, cnn), img_var
-
 
 dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
@@ -72,7 +67,7 @@ def extract_features(x, cnn):
     return features
 
 
-def content_loss(content_weight, content_current, content_original):
+def content_loss(content_weight, content_current, content_target):
     """
     Compute the content loss for style transfer.
 
@@ -85,7 +80,7 @@ def content_loss(content_weight, content_current, content_original):
     Returns:
     - scalar content loss
     """
-    content_loss = content_weight * torch.sum((torch.pow(content_current - content_original, 2)))
+    content_loss = content_weight * torch.sum((torch.pow(content_current - content_target, 2)))
     return content_loss
 
 
