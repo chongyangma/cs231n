@@ -92,3 +92,6 @@ ENV/
 *.pth
 *.zip
 *.tar.gz
+*.jpg
+*.png
+*.bmp
